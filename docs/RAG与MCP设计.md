@@ -104,11 +104,6 @@ AShare MCP 把金融数据能力封装成 Agent 可调用的工具。
 + RAG 历史知识
 + MCP 实时金融数据
 + 本轮 Deep Research 已累积证据
-```
-
-这也是 StockPilot 与普通一次性股票问答的核心差别。
-
----
 
 ## 6. 产品层面的取舍
 
