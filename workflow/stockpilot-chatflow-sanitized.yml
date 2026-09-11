@@ -1,0 +1,102 @@
+# StockPilot AI 公开脱敏版 Chatflow 结构示例
+# 注意：该文件用于作品集展示，不是生产环境完整导出。
+# 已移除数据集 ID、密钥、私有 URL、真实自选股和内部资源标识。
+
+app:
+  name: StockPilot AI
+  mode: advanced-chat
+  description: 自选股驱动的 A 股智能研究助手
+
+variables:
+  watchlist_context: "<WATCHLIST_CONTEXT>"
+  thesis_memory: "<INVESTMENT_THESIS_MEMORY>"
+
+workflow:
+  nodes:
+    - id: start
+      type: start
+      title: 用户输入
+
+    - id: command_parser
+      type: code
+      title: 命令解析
+      description: 解析普通聊天、自选股管理、晨报等指令
+
+    - id: router
+      type: if-else
+      title: 任务分流
+      description: 将简单行情、历史知识和复杂研究路由至不同链路
+
+    - id: rag_retrieval
+      type: knowledge-retrieval
+      title: RAG 知识检索
+      dataset_id: "<YOUR_DATASET_ID>"
+      retrieval_mode: multiple
+      multiple_retrieval_config:
+        reranking_enable: true
+        reranking_model:
+          provider: langgenius/tongyi/tongyi
+          model: qwen3-rerank
+        top_k: 4
+
+    - id: research_planner
+      type: llm
+      title: Research Planner
+      model: LongCat-2.0
+      prompt_ref: ../prompts/研究规划器.md
+
+    - id: structurer
+      type: llm
+      title: 研究任务结构化
+      model: openai/gpt-oss-120b
+      output_schema_ref: ../schemas/research-task.schema.json
+
+    - id: deep_research_loop
+      type: loop
+      title: Deep Research Loop
+      description: 逐项执行结构化研究任务并累计证据
+
+    - id: ashare_mcp
+      type: agent-tool
+      title: AShare MCP
+      tools:
+        - get_daily_kline
+        - get_technical_analysis
+        - technical_sentiment_analysis
+        - get_individual_fund_flow
+        - get_financial_data
+        - get_announcements
+        - get_research_reports
+        - get_pe_pb_history
+
+    - id: reviewer
+      type: llm
+      title: Reviewer
+      prompt_ref: ../prompts/复核器.md
+
+    - id: answer
+      type: answer
+      title: 微信回复
+
+  routes:
+    - from: start
+      to: command_parser
+    - from: command_parser
+      to: router
+    - from: router
+      condition: realtime_fact
+      to: ashare_mcp
+    - from: router
+      condition: historical_context
+      to: rag_retrieval
+    - from: router
+      condition: deep_research
+      to: research_planner
+    - from: research_planner
+      to: structurer
+    - from: structurer
+      to: deep_research_loop
+    - from: deep_research_loop
+      to: reviewer
+    - from: reviewer
+      to: answer
