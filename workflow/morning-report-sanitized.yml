@@ -1,0 +1,54 @@
+# StockPilot AI 自动晨报公开脱敏版结构示例
+# 用于作品集展示，不是生产环境完整导出。
+
+app:
+  name: StockPilot Morning Report
+  mode: workflow
+
+inputs:
+  report_date: "<REPORT_DATE>"
+  news_context: "<NEWS_CONTEXT>"
+  trigger_source: "<TRIGGER_SOURCE>"
+  watchlist_context: "<WATCHLIST_CONTEXT>"
+
+workflow:
+  nodes:
+    - id: start
+      type: start
+      title: 晨报输入
+
+    - id: news_editor
+      type: llm
+      title: A股晨报新闻整理器
+      model: inclusionai/ling-3.0-flash-fin:free
+      description: 整理新闻材料并保留事实、观点、待验证信息的边界
+
+    - id: analysis_agent
+      type: agent
+      title: 金融分析 Agent
+      tools_provider: AShare MCP
+      tools:
+        - get_daily_kline
+        - get_technical_analysis
+        - technical_sentiment_analysis
+        - get_individual_fund_flow
+
+    - id: final_editor
+      type: llm
+      title: A股投资晨报最终编辑器
+      model: openai/gpt-oss-120b
+      prompt_ref: ../prompts/晨报编辑器.md
+
+    - id: output
+      type: end
+      title: 输出
+
+  routes:
+    - from: start
+      to: news_editor
+    - from: news_editor
+      to: analysis_agent
+    - from: analysis_agent
+      to: final_editor
+    - from: final_editor
+      to: output
